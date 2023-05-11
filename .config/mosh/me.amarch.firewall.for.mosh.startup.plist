@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple Computer//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>me.amarch.firewall.for.mosh.startup</string>
+
+    <key>OnDemand</key>
+    <true/>
+    <key>LaunchOnlyOnce</key>
+    <true/>
+
+    <key>UserName</key>
+    <string>amarch</string>
+
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/bash</string>
+        <string>~/dev/dotfiles/mosh/2_on_startup_setup_firewall.sh</string>
+    </array>
+
+    <key>StandardOutPath</key>
+    <string>~/nil/me.amarch.firewall.for.mosh.log</string>
+    <key>StandardErrorPath</key>
+    <string>~/nil/me.amarch.firewall.for.mosh.log<</string>
+</dict>
+</plist>

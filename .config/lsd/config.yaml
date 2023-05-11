@@ -1,0 +1,6 @@
+# ~/.config/lsd/config.yaml
+color:
+  # Possible values: never, auto, always
+  when: auto
+  # Possible values: default, <theme-file-name>
+  theme: custom

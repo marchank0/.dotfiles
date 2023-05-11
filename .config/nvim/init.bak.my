@@ -1,0 +1,509 @@
+-- vim:foldmethod=marker
+-- ~/.local/share/nvim
+local lazypath = vim.fn.stdpath('data') .. '/lazy/lazy.nvim'
+if not vim.loop.fs_stat(lazypath) then
+    vim.fn.system({
+        'git', 'clone', '--filter=blob:none',
+        'https://github.com/folke/lazy.nvim.git', '--branch=stable', -- latest stable release
+        lazypath
+    })
+end
+vim.opt.rtp:prepend(lazypath)
+
+local error_handler = function(err, level)
+    if not pcall(require, 'notify') then
+        err = string.format('local config: %s', err)
+    end
+    vim.notify_once(err, level or vim.log.levels.DEBUG, {
+        title = 'local config',
+    })
+end
+
+--: Editor settings {{{
+local opt = vim.opt
+local cmd = vim.api.nvim_command
+
+opt.number = true
+opt.relativenumber = true
+
+opt.cursorline = true    -- highlights cursor line
+
+opt.scrolloff = 3        -- lines before start and end screen
+opt.termguicolors = true -- truecolors in terminal
+opt.tabstop = 4          -- show existing tab with 4 spaces width
+opt.shiftwidth = 4       -- when indenting with '>', 4 spaces width
+opt.expandtab = true     -- on pressing tab, insert 4 spaces
+opt.winbar = "%{%v:lua.require'nvim-navic'.get_location()%}"
+
+-- insert mode: numbers, normal mode: relative numbers
+cmd('autocmd InsertEnter * :set norelativenumber')
+cmd('autocmd InsertLeave * :set relativenumber')
+
+opt.list = true
+opt.listchars:append('space:⋅')
+opt.listchars:append('eol:↴')
+opt.listchars:append('tab:-->')
+
+opt.laststatus = 3 -- single statusbar for splitted windows
+-- }}}
+
+require('lazy').setup({
+    {
+        'stevearc/oil.nvim',
+        opts = {},
+        -- Optional dependencies
+        dependencies = { 'nvim-tree/nvim-web-devicons' }
+    },
+    {
+        'williamboman/mason.nvim',
+        -- 'ErichDonGubler/lsp_lines.nvim', -- diagnostics in multi lines
+        build = ':MasonUpdate',
+        config = function()
+            require('mason').setup {
+                ui = {
+                    icons = {
+                        package_installed = '✓',
+                        package_pending = '➜',
+                        package_uninstalled = '✗'
+                    }
+                }
+            }
+        end
+    },
+    {
+        'williamboman/mason-lspconfig.nvim',
+        dependencies = { 'williamboman/mason.nvim' },
+        config = function()
+            require('mason-lspconfig').setup {
+                ensure_installed = { 'lua_ls', 'pyright', 'gopls', 'bashls', 'cssls', 'html', 'jsonls', 'yamlls', 'jdtls' }
+            }
+        end
+    },
+    {
+        'neovim/nvim-lspconfig',
+        dependencies = { 'williamboman/mason-lspconfig.nvim' },
+    },
+    {
+        'lukas-reineke/lsp-format.nvim',
+        dependencies = { 'neovim/nvim-lspconfig' },
+        config = function() require('lsp-format').setup {} end
+    },
+    {
+        'hrsh7th/cmp-nvim-lsp',
+        'hrsh7th/cmp-buffer',
+        'hrsh7th/cmp-path',
+        'hrsh7th/cmp-cmdline',
+        'hrsh7th/nvim-cmp',
+        'L3MON4D3/LuaSnip', --snippet engine
+        'saadparwaiz1/cmp_luasnip',
+        dependencies = { 'neovim/nvim-lspconfig' },
+    },
+    --{
+    --    'mfussenegger/nvim-dap',
+    --    'rcarriga/nvim-dap-ui',
+    -- TODO:
+    -- 'theHamsta/nvim-dap-virtual-text'
+    -- 'jay-babu/mason-nvim-dap.nvim' -- dap install automation
+    -- 'mfussenegger/nvim-dap-python' -- do I need this with mason-nvim-dap???
+    -- 'leoluz/nvim-dap-go',
+    --},
+    --[[ {
+        'jose-elias-alvarez/null-ls.nvim',
+        dependencies = { 'nvim-lua/plenary.nvim' }
+    }, ]]
+    {
+        'windwp/nvim-autopairs',
+        config = function() require('nvim-autopairs').setup {} end
+    },
+    {
+        'EdenEast/nightfox.nvim',
+        priority = 1000,
+        config = function()
+            require('nightfox').setup {
+                options = {
+                    styles = {
+                        comments = 'italic',
+                        keywords = 'bold',
+                        types = 'italic,bold'
+                    }
+                }
+            }
+            --: Colorscheme watcher {{{
+            local colorFile = vim.fn.expand('~/.vimcolor')
+            local w = vim.loop.new_fs_event()
+            local on_change
+
+            local function reload()
+                vim.cmd('source ' .. colorFile)
+            end
+
+            local function watch_file(fname)
+                w:start(fname, {}, vim.schedule_wrap(on_change))
+            end
+
+            on_change = function()
+                reload()
+                -- Debounce: stop/start.
+                w:stop()
+                watch_file(colorFile)
+            end
+
+            -- reload vim config when background changes
+            watch_file(colorFile)
+            reload()
+            ---}}}
+        end
+    },
+    {
+        'nvim-telescope/telescope.nvim',
+        tag = '0.1.0',
+        dependencies = { 'nvim-lua/plenary.nvim' }
+    },
+    --: Lualine setup {{{
+    {
+        'nvim-lualine/lualine.nvim',
+        dependencies = { 'nvim-tree/nvim-web-devicons' },
+        config = function()
+            local curr_lsp_server_name = {
+                function()
+                    local msg = 'No Active Lsp'
+                    local buf_ft = vim.api.nvim_buf_get_option(0, 'filetype')
+                    local clients = vim.lsp.get_active_clients()
+                    if next(clients) == nil then
+                        return msg
+                    end
+                    for _, client in ipairs(clients) do
+                        local filetypes = client.config.filetypes
+                        if filetypes and vim.fn.index(filetypes, buf_ft) ~= -1 then
+                            return client.name
+                        end
+                    end
+                    return msg
+                end,
+                icon = ' ',
+                color = { gui = 'bold' },
+            }
+            require('lualine').setup({
+                sections = {
+                    lualine_c = { { 'filename', path = 1 } },
+                    -- lualine_x = { 'progress', 'encoding', 'fileformat', 'filetype' },
+                    lualine_y = { curr_lsp_server_name }
+                }
+            })
+        end
+    },
+    -- }}}
+    {
+        'j-hui/fidget.nvim',
+        config = function() require('fidget').setup {} end
+    },
+    --: Symbols Outline Setup {{{
+    {
+        'simrat39/symbols-outline.nvim',
+        enabled = false,
+        config = function()
+            require('symbols-outline').setup {
+                symbols = {
+                    File = { icon = '', hl = '@text.uri' },
+                    Module = { icon = '', hl = '@namespace' },
+                    Namespace = { icon = '⦿', hl = '@namespace' },
+                    Package = { icon = '', hl = '@namespace' },
+                    Class = { icon = '', hl = '@type' },
+                    Method = { icon = 'ƒ', hl = '@method' },
+                    Property = { icon = '', hl = '@method' },
+                    Field = { icon = '', hl = '@field' },
+                    Constructor = { icon = '', hl = '@constructor' },
+                    Enum = { icon = '練', hl = '@type' },
+                    Interface = { icon = '練', hl = '@type' },
+                    Function = { icon = '', hl = '@function' },
+                    Variable = { icon = '', hl = '@constant' },
+                    Constant = { icon = '', hl = '@constant' },
+                    String = { icon = '', hl = '@string' },
+                    Number = { icon = '', hl = '@number' },
+                    Boolean = { icon = '◩', hl = '@boolean' },
+                    Array = { icon = '', hl = '@constant' },
+                    Object = { icon = '', hl = '@type' },
+                    Key = { icon = '', hl = '@type' },
+                    Null = { icon = 'ﳠ', hl = '@type' },
+                    EnumMember = { icon = '', hl = '@field' },
+                    Struct = { icon = '', hl = '@type' },
+                    Event = { icon = '', hl = '@type' },
+                    Operator = { icon = '', hl = '@operator' },
+                    TypeParameter = { icon = '', hl = '@parameter' },
+                }
+            }
+        end
+    },
+    -- }}}
+    'lewis6991/gitsigns.nvim',
+    'NvChad/nvim-colorizer.lua',
+    --{
+    --    'petertriho/nvim-scrollbar',
+    --    config = function() require('scrollbar').setup {} end
+    --},
+    {
+        'kevinhwang91/nvim-hlslens',
+        config = function() require('hlslens').setup {} end
+    },
+    --{
+    --    'numToStr/Comment.nvim',
+    --    config = function() require('Comment').setup {} end
+    --},
+    --{
+    --    'sindrets/diffview.nvim',
+    --    dependencies = 'nvim-lua/plenary.nvim'
+    --},
+    {
+        'kylechui/nvim-surround',
+        config = function()
+            require('nvim-surround').setup {
+                -- Configuration here, or leave empty to defaults
+            }
+        end
+    },
+    'RRethy/vim-illuminate', -- highlights variable under the cursor
+    --: Navic Setup {{{
+    {
+        'SmiteshP/nvim-navic',
+        dependencies = 'neovim/nvim-lspconfig',
+        config = function()
+            require('nvim-navic').setup {
+                highlight = true,
+                icons = {
+                    File          = '',
+                    Module        = '',
+                    Namespace     = '⦿',
+                    Package       = '',
+                    Class         = '',
+                    Method        = 'ƒ',
+                    Property      = '',
+                    Field         = '',
+                    Constructor   = '',
+                    Enum          = '練',
+                    Interface     = '練',
+                    Function      = '',
+                    Variable      = '',
+                    Constant      = '',
+                    String        = '',
+                    Number        = '',
+                    Boolean       = '◩',
+                    Array         = '',
+                    Object        = '',
+                    Key           = '',
+                    Null          = 'ﳠ ',
+                    EnumMember    = '',
+                    Struct        = '',
+                    Event         = '',
+                    Operator      = '',
+                    TypeParameter = '',
+                }
+            }
+        end
+    },
+    -- }}}
+    {
+        'lukas-reineke/indent-blankline.nvim',
+        config = function()
+            require('indent_blankline').setup {
+                show_current_context = true,
+                show_current_context_start = true,
+            }
+        end
+    },
+    {
+        -- TODO: remove??
+        'stevearc/dressing.nvim',
+        config = function() require('dressing').setup {} end
+    },
+    {
+        'nvim-treesitter/nvim-treesitter', -- Highlight, edit, and navigate code
+        dependencies = { 'nvim-treesitter/nvim-treesitter-textobjects' },
+        build = ":TSUpdate",
+    },
+    -- {'kevinhwang91/nvim-ufo', dependencies = 'kevinhwang91/promise-async'} -- advanced folders in code
+})
+
+local lsp_format_status_ok, lsp_format = pcall(require, 'lsp-format')
+if not lsp_format_status_ok then
+    error_handler('lsp-format is not available', vim.log.levels.WARN)
+end
+
+local navic_lsp_status_ok, navic = pcall(require, 'nvim-navic')
+if not navic_lsp_status_ok then
+    error_handler('navic is not available', vim.log.levels.WARN)
+end
+
+local on_attach = function(client, bufnr)
+    lsp_format.on_attach(client)
+    if client.server_capabilities.documentSymbolProvider then
+        navic.attach(client, bufnr)
+    end
+end
+
+local cmp_nvim_lsp_status_ok, cmp_nvim_lsp = pcall(require, 'cmp_nvim_lsp')
+if not cmp_nvim_lsp_status_ok then
+    error_handler('cmp_nvim_lsp is not available', vim.log.levels.WARN)
+end
+
+local lspconfig_status_ok, lspconfig = pcall(require, 'lspconfig')
+if not lspconfig_status_ok then
+    error_handler('lspconfig is not available', vim.log.levels.WARN)
+end
+
+-- without lua_ls
+local lsp_servers = { 'pyright', 'gopls', 'bashls', 'cssls', 'html', 'jsonls', 'yamlls', 'jdtls' }
+
+local capabilities = cmp_nvim_lsp.default_capabilities()
+for _, value in ipairs(lsp_servers) do
+    lspconfig[value].setup {
+        capabilities = capabilities,
+        on_attach = on_attach
+    }
+end
+
+lspconfig['lua_ls'].setup {
+    capabilities = capabilities,
+    on_attach = on_attach,
+    settings = {
+        Lua = {
+            diagnostics = {
+                globals = { 'vim' }
+            }
+        }
+    }
+}
+
+--: Autocomplete Setup {{{
+local cmp = require('cmp')
+cmp.setup({
+    snippet = {
+        -- REQUIRED - you must specify a snippet engine
+        expand = function(args)
+            require('luasnip').lsp_expand(args.body)
+        end,
+    },
+    window = {
+        -- completion = cmp.config.window.bordered(),
+        -- documentation = cmp.config.window.bordered(),
+    },
+    mapping = cmp.mapping.preset.insert({
+        ['<C-b>'] = cmp.mapping.scroll_docs(-4),
+        ['<C-f>'] = cmp.mapping.scroll_docs(4),
+        ['<C-Space>'] = cmp.mapping.complete(),
+        ['<C-e>'] = cmp.mapping.abort(),
+        ['<CR>'] = cmp.mapping.confirm({ select = true }), -- Accept currently selected item. Set `select` to `false` to only confirm explicitly selected items.
+    }),
+    sources = cmp.config.sources({
+        { name = 'nvim_lsp' },
+        { name = 'luasnip' },
+    }, {
+        { name = 'buffer' },
+    })
+})
+
+-- Set configuration for specific filetype.
+cmp.setup.filetype('gitcommit', {
+    sources = cmp.config.sources({
+        { name = 'cmp_git' }, -- You can specify the `cmp_git` source if you were installed it.
+    }, {
+        { name = 'buffer' },
+    })
+})
+
+-- Use buffer source for `/` and `?` (if you enabled `native_menu`, this won't work anymore).
+cmp.setup.cmdline({ '/', '?' }, {
+    mapping = cmp.mapping.preset.cmdline(),
+    sources = {
+        { name = 'buffer' }
+    }
+})
+
+-- Use cmdline & path source for ':' (if you enabled `native_menu`, this won't work anymore).
+cmp.setup.cmdline(':', {
+    mapping = cmp.mapping.preset.cmdline(),
+    sources = cmp.config.sources({
+        { name = 'path' }
+    }, {
+        { name = 'cmdline' }
+    })
+})
+-- }}}
+
+-- [[ Configure Treesitter ]]
+-- See `:help nvim-treesitter`
+require('nvim-treesitter.configs').setup {
+    -- Add languages to be installed here that you want installed for treesitter
+    ensure_installed = { 'c', 'cpp', 'go', 'lua', 'python', 'rust', 'tsx', 'typescript', 'vimdoc', 'vim', 'java' },
+
+    -- Autoinstall languages that are not installed. Defaults to false (but you can change for yourself!)
+    auto_install = false,
+
+    highlight = { enable = true },
+    indent = { enable = true, disable = { 'python' } },
+    incremental_selection = {
+        enable = true,
+        keymaps = {
+            init_selection = '<c-space>',
+            node_incremental = '<c-space>',
+            scope_incremental = '<c-s>',
+            node_decremental = '<M-space>',
+        },
+    },
+    textobjects = {
+        select = {
+            enable = true,
+            lookahead = true, -- Automatically jump forward to textobj, similar to targets.vim
+            keymaps = {
+                -- You can use the capture groups defined in textobjects.scm
+                ['aa'] = '@parameter.outer',
+                ['ia'] = '@parameter.inner',
+                ['af'] = '@function.outer',
+                ['if'] = '@function.inner',
+                ['ac'] = '@class.outer',
+                ['ic'] = '@class.inner',
+            },
+        },
+        move = {
+            enable = true,
+            set_jumps = true, -- whether to set jumps in the jumplist
+            goto_next_start = {
+                [']m'] = '@function.outer',
+                [']]'] = '@class.outer',
+            },
+            goto_next_end = {
+                [']M'] = '@function.outer',
+                [']['] = '@class.outer',
+            },
+            goto_previous_start = {
+                ['[m'] = '@function.outer',
+                ['[['] = '@class.outer',
+            },
+            goto_previous_end = {
+                ['[M'] = '@function.outer',
+                ['[]'] = '@class.outer',
+            },
+        },
+        swap = {
+            enable = true,
+            swap_next = {
+                ['<leader>a'] = '@parameter.inner',
+            },
+            swap_previous = {
+                ['<leader>A'] = '@parameter.inner',
+            },
+        },
+    },
+}
+
+-- TODO: pyright: setup format with null_ls because this lsp isn't contain it
+
+-- require('gitsigns').setup {}
+-- require('colorizer').setup {}
+-- local null_ls = require('null-ls')
+-- null_ls.setup({
+--    sources = {
+--        null_ls.builtins.formatting.stylua,
+--        null_ls.builtins.diagnostics.eslint,
+--        null_ls.builtins.completion.spell,
+--    }
+--})

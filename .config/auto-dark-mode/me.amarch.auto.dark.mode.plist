@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>me.amarch.auto.dark.mode</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>/bin/zsh</string>
+        <string>-c</string>
+        <string>/Users/amarch/dev/dotfiles/auto-dark-mode/mode-observer.swift | /Users/amarch/dev/dotfiles/auto-dark-mode/change-color-mode.sh</string>
+    </array>
+    <key>KeepAlive</key>
+    <true/>
+    <key>StandardOutPath</key>
+    <string>/Users/amarch/nil/change-color-mode-stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>/Users/amarch/nil/change-color-mode-stderr.log</string>
+</dict>
+</plist>
