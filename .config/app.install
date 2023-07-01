@@ -1,17 +1,50 @@
-lsd
-bottom
+**shell**
+lsd: modern ls replacement
 kitty
+btop: system monitor
 starship
-ripgrep
-fd
+ripgrep: modern grep
+fd: modern find
 fzf
 nvim
 python3
 golang
+java17
 xplr
-bat
-zoxide
+bat: modern cat
+zoxide: modern cd
 fish
 mosh
 zellij
 git
+lazygit
+bclm: mac battery charge limiter
+
+**app**
+cyberghost
+discord
+obsidian
+telegram
+idea ce
+kindle
+foxit pdf reader
+
+**mac-only**
+karabiner
+hhkb
+userscript
+alfred
+lightshot screenshot
+goodnotes
+fanny
+iina
+pocket yoga
+Patterns
+CamTwist
+Developer
+SweetHome 3D
+---safari exts
+bitwarden
+vimari                - save props
+wirp
+JSONPeep
