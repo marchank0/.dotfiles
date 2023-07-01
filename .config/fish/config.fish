@@ -18,8 +18,9 @@ alias fzf='fzf --height 40% --reverse --preview "bat {}" \
 	               --preview-window=50% --info=inline --border=none --keep-right --scrollbar=█ --no-color \
 	               --bind="ctrl-\:change-preview-window(80%|hidden|)"'
 alias reload='source ~/.config/fish/config.fish'
+# TODO make script/ansible book for automation
 alias dot='/usr/bin/git --git-dir=$HOME/.dotfiles/ --work-tree=$HOME' # manage git bare repo for dotfiles
-
+alias dotrm='dot rm --cached -f'                                      # remove file from git bare repo
 if status is-interactive
     # Commands to run in interactive sessions can go here
 end
